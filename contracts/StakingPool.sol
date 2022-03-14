@@ -73,11 +73,16 @@ contract StakingPool {
         require(stakeData.amountStaked > 0, "must have staked funds");
         require(_amountRequested <= stakeData.amountStaked, "requested amount too high");
 
-        stakeData.numUnlockRequests = stakeData.numUnlockRequests.add(1);
+        uint256 numUnlockRequests = stakeData.numUnlockRequests;
 
-        UnlockRequest storage unlockRequest = stakeData.unlockRequests[stakeData.numUnlockRequests];
+        require(numUnlockRequests < type(uint256).max, "at request max, please unstake");
+
+        numUnlockRequests = numUnlockRequests.add(1);
+
+        UnlockRequest storage unlockRequest = stakeData.unlockRequests[numUnlockRequests];
         unlockRequest.amount = _amountRequested;
         unlockRequest.timestamp = block.timestamp;
+        stakeData.numUnlockRequests = numUnlockRequests;
     }
 
     /**
