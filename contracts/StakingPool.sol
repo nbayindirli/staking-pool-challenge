@@ -3,8 +3,6 @@ pragma solidity ^0.8.4;
 
 import "./Tether.sol";
 
-import "hardhat/console.sol";
-
 /**
 * Solidity Challenge: Staking Pool
 *
@@ -48,8 +46,6 @@ contract StakingPool {
     * - _stakeholder has pre-approved _staker via tether.approve(_staker, _amount)
     */
     function stake(address _stakeholder, uint256 _amountStaked) external {
-        console.log("%s staking $%d on behalf of stakeholder %s.", msg.sender, _amountStaked, _stakeholder);
-
         require(_amountStaked > 0, "stake amount must be > 0");
 
         bool success = tether.transferFrom(_stakeholder, address(this), _amountStaked);
@@ -58,8 +54,6 @@ contract StakingPool {
         stakeholders[_stakeholder].amountStaked += _amountStaked;
 
         emit Staked(msg.sender, _stakeholder, _amountStaked, block.timestamp);
-
-        console.log("%s successfully staked $%d on behalf of stakeholder %s.", msg.sender, _amountStaked, _stakeholder);
     }
 
     /**
@@ -70,8 +64,6 @@ contract StakingPool {
     * - Can only be called by the stakeholder
     */
     function requestUnlock(uint256 _amountRequested) external {
-        console.log("%s requesting unlock for $%d.", msg.sender, _amountRequested);
-
         require(_amountRequested > 0, "request amount must be > 0");
 
         StakeData storage stakeData = stakeholders[msg.sender];
@@ -84,8 +76,6 @@ contract StakingPool {
         UnlockRequest storage unlockRequest = stakeData.unlockRequests[stakeData.numUnlockRequests];
         unlockRequest.amount = _amountRequested;
         unlockRequest.timestamp = block.timestamp;
-
-        console.log("%s successfully requested unlock for $%d.", msg.sender, _amountRequested);
     }
 
     /**
@@ -98,8 +88,6 @@ contract StakingPool {
     * - 48hr grace period between requesting unlock and unstaking
     */
     function unstake() external {
-        console.log("%s unstaking.", msg.sender);
-
         StakeData storage stakeData = stakeholders[msg.sender];
 
         require(stakeData.amountStaked > 0, "must have staked funds");
@@ -118,8 +106,6 @@ contract StakingPool {
                     amountUnstaked += unlockRequest.amount;
                     delete stakeData.unlockRequests[r];
                     stakeData.numUnlockRequests--;
-
-                    console.log("Added $%s to amountUnstaked", unlockRequest.amount);
                 }
             }
         }
@@ -135,7 +121,5 @@ contract StakingPool {
         stakeData.amountStaked -= amountUnstaked;
 
         emit Unstaked(msg.sender, amountUnstaked, block.timestamp);
-
-        console.log("%s successfully unstaked $%d.", msg.sender, amountUnstaked);
     }
 }
