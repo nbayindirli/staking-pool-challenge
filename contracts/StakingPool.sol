@@ -2,6 +2,7 @@
 pragma solidity ^0.8.4;
 
 import "./Tether.sol";
+import "@openzeppelin/contracts/utils/math/SafeMath.sol";
 
 /**
 * Solidity Challenge: Staking Pool
@@ -13,6 +14,7 @@ import "./Tether.sol";
 * - Stakeholder: The one who owns the assets of a stake.
 */
 contract StakingPool {
+    using SafeMath for uint256;
 
     event Staked(address indexed _staker, address indexed _stakeholder, uint256 _amount, uint256 _timestamp);
     event Unstaked(address indexed _stakeholder, uint256 _amount, uint256 _timestamp);
@@ -51,7 +53,7 @@ contract StakingPool {
         bool success = tether.transferFrom(_stakeholder, address(this), _amountStaked);
         require(success, "transferFrom failed");
 
-        stakeholders[_stakeholder].amountStaked += _amountStaked;
+        stakeholders[_stakeholder].amountStaked = (stakeholders[_stakeholder].amountStaked).add(_amountStaked);
 
         emit Staked(msg.sender, _stakeholder, _amountStaked, block.timestamp);
     }
@@ -71,7 +73,7 @@ contract StakingPool {
         require(stakeData.amountStaked > 0, "must have staked funds");
         require(_amountRequested <= stakeData.amountStaked, "requested amount too high");
 
-        stakeData.numUnlockRequests++;
+        stakeData.numUnlockRequests = stakeData.numUnlockRequests.add(1);
 
         UnlockRequest storage unlockRequest = stakeData.unlockRequests[stakeData.numUnlockRequests];
         unlockRequest.amount = _amountRequested;
@@ -102,10 +104,10 @@ contract StakingPool {
         for (uint256 r = 1; r <= numUnlockRequests; r++) {
             unlockRequest = stakeData.unlockRequests[r];
             if (unlockRequest.amount > 0) {
-                if ((unlockRequest.timestamp + 48 hours) <= block.timestamp) {
-                    amountUnstaked += unlockRequest.amount;
+                if (unlockRequest.timestamp.add(48 hours) <= block.timestamp) {
+                    amountUnstaked = amountUnstaked.add(unlockRequest.amount);
                     delete stakeData.unlockRequests[r];
-                    stakeData.numUnlockRequests--;
+                    stakeData.numUnlockRequests = stakeData.numUnlockRequests.sub(1);
                 }
             }
         }
@@ -118,7 +120,7 @@ contract StakingPool {
         success = tether.transferFrom(address(this), msg.sender, amountUnstaked);
         require(success, "transferFrom failed");
 
-        stakeData.amountStaked -= amountUnstaked;
+        stakeData.amountStaked = stakeData.amountStaked.sub(amountUnstaked);
 
         emit Unstaked(msg.sender, amountUnstaked, block.timestamp);
     }
