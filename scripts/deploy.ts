@@ -3,7 +3,7 @@ import { Tether__factory } from "../typechain";
 import { StakingPool__factory } from "../typechain/factories/StakingPool__factory";
 
 async function main() {
-    const [deployer, owner] = await ethers.getSigners();
+    const [deployer] = await ethers.getSigners();
     const tether = await new Tether__factory(deployer).deploy(
         process.env.MASK_ADDRESS_A1 || "", BigInt(1_000_000 * (10 ** 18))
     );
