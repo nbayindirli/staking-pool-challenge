@@ -102,7 +102,7 @@ contract StakingPool {
         for (uint256 r = 1; r <= numUnlockRequests; r++) {
             unlockRequest = stakeData.unlockRequests[r];
             if (unlockRequest.amount > 0) {
-                if (unlockRequest.timestamp <= (block.timestamp - 48 hours)) {
+                if ((unlockRequest.timestamp + 48 hours) <= block.timestamp) {
                     amountUnstaked += unlockRequest.amount;
                     delete stakeData.unlockRequests[r];
                     stakeData.numUnlockRequests--;
