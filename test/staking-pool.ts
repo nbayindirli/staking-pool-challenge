@@ -191,6 +191,30 @@ describe("StakingPool Test", async function () {
             expect(stakeDataAfter.numUnlockRequests).to.equal(0);
         });
 
+        it("should unstake all of owner's available funds twice", async function () {
+            let duration = time.duration.hours(48);
+            await time.increase(duration);
+
+            await stakingPool.connect(owner).unstake();
+
+            await stakingPool.connect(owner).requestUnlock(400);
+
+            duration = time.duration.hours(50);
+            await time.increase(duration);
+
+            const stakeDataBefore = await stakingPool.stakeholders(owner.address);
+
+            expect(stakeDataBefore.amountStaked).to.equal(1222203);
+            expect(stakeDataBefore.numUnlockRequests).to.equal(1);
+
+            await stakingPool.connect(owner).unstake();
+
+            const stakeDataAfter = await stakingPool.stakeholders(owner.address);
+
+            expect(stakeDataAfter.amountStaked).to.equal(1222203 - 400);
+            expect(stakeDataAfter.numUnlockRequests).to.equal(0);
+        });
+
         it("should not unstake due to 'must have staked funds'", async function () {
             await expect(stakingPool.connect(acct2).unstake()).to.be.revertedWith('must have staked funds');
         });
