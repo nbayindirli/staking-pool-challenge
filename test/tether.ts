@@ -18,7 +18,7 @@ describe("Tether Test", async function () {
 
     describe("constructor() test", async function () {
 
-        it("should mint 1e21 $USDT to owner", async function () {
+        it("should mint 1e24 $USDT to owner", async function () {
             const ownerBalanceActual = await tether.balanceOf(owner.address);
 
             expect(ownerBalanceActual).to.equal(totalSupply);
