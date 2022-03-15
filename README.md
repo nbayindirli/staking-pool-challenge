@@ -1,6 +1,6 @@
 # staking-pool-challenge
 
-Estimated `StakingPool` gas usage: 1040611 (3.5% of block limit)
+Estimated `StakingPool` gas usage: 1291667 (4.3% of block limit)
 
 Estimated `Tether (USDT)` gas usage: 1223662 (4.1% of block limit)
 

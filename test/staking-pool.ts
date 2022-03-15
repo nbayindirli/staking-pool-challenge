@@ -29,12 +29,14 @@ describe("StakingPool Test", async function () {
             const ownerBalanceBefore = await tether.balanceOf(owner.address);
 
             await tether.connect(owner).approve(stakingPool.address, amountStakedExpected);
+            await tether.connect(owner).approve(owner.address, amountStakedExpected);
 
-            expect(await tether.allowance(owner.address, owner.address));
+            expect(await tether.allowance(owner.address, stakingPool.address)).to.equal(amountStakedExpected);
+            expect(await tether.allowance(owner.address, owner.address)).to.equal(amountStakedExpected);
 
             expect(ownerBalanceBefore).to.equal(totalSupply);
 
-            await stakingPool.stake(owner.address, amountStakedExpected);
+            await stakingPool.connect(owner).stake(owner.address, amountStakedExpected);
 
             const ownerBalanceAfter = await tether.balanceOf(owner.address);
             const stakeData = await stakingPool.stakeholders(owner.address);
@@ -51,8 +53,10 @@ describe("StakingPool Test", async function () {
             const acct1BalanceBefore = await tether.balanceOf(acct1.address);
 
             await tether.connect(owner).approve(stakingPool.address, amountStakedExpected);
+            await tether.connect(owner).approve(acct1.address, amountStakedExpected);
 
-            expect(await tether.allowance(owner.address, owner.address));
+            expect(await tether.allowance(owner.address, stakingPool.address)).to.be.equal(amountStakedExpected);
+            expect(await tether.allowance(owner.address, acct1.address)).to.be.equal(amountStakedExpected);
 
             expect(ownerBalanceBefore).to.equal(totalSupply);
             expect(acct1BalanceBefore).to.equal(0);
@@ -73,35 +77,33 @@ describe("StakingPool Test", async function () {
             await expect(stakingPool.stake(owner.address, 0)).to.be.revertedWith('stake amount must be > 0');
         });
 
-        it("should not stake due to 'ERC20: transfer amount exceeds balance'", async function () {
+        it("should not stake due to 'stakeholder balance too low'", async function () {
             const amountStakedExpected = BigInt(1E25);
 
-            const ownerBalanceBefore = await tether.balanceOf(owner.address);
-
-            await tether.connect(owner).approve(stakingPool.address, amountStakedExpected);
-
-            expect(await tether.allowance(owner.address, owner.address));
-
-            expect(ownerBalanceBefore).to.equal(totalSupply);
-
             await expect(stakingPool.stake(owner.address, amountStakedExpected))
-                .to.be.revertedWith('ERC20: transfer amount exceeds balance');
+                .to.be.revertedWith('stakeholder balance too low');
         });
 
-        it("should not stake due to 'ERC20: insufficient allowance'", async function () {
-            const amountApprovedExpected = BigInt(1_999_999);
-            const amountStakedExpected = BigInt(2_000_000);
+        it("should not stake due to 'staker allowance too low'", async function () {
+            const amountStakedExpected = 2_000_000;
+            const amountStakedLow = 1_000_000;
 
-            const ownerBalanceBefore = await tether.balanceOf(owner.address);
-
-            await tether.connect(owner).approve(stakingPool.address, amountApprovedExpected);
-
-            expect(await tether.allowance(owner.address, owner.address));
-
-            expect(ownerBalanceBefore).to.equal(totalSupply);
+            await tether.connect(owner).approve(stakingPool.address, amountStakedExpected);
+            await tether.connect(owner).approve(owner.address, amountStakedLow);
 
             await expect(stakingPool.stake(owner.address, amountStakedExpected))
-                .to.be.revertedWith('ERC20: insufficient allowance');
+                .to.be.revertedWith('staker allowance too low');
+        });
+
+        it("should not stake due to 'pool allowance too low'", async function () {
+            const amountStakedExpected = 2_000_000;
+            const amountStakedLow = 1_000_000;
+
+            await tether.connect(owner).approve(stakingPool.address, amountStakedLow);
+            await tether.connect(owner).approve(owner.address, amountStakedExpected);
+
+            await expect(stakingPool.stake(owner.address, amountStakedExpected))
+                .to.be.revertedWith('pool allowance too low');
         });
 
     });
@@ -112,11 +114,13 @@ describe("StakingPool Test", async function () {
 
         beforeEach(async function () {
             await tether.connect(owner).approve(stakingPool.address, amountStakedExpected);
+            await tether.connect(owner).approve(owner.address, amountStakedExpected);
             await stakingPool.connect(owner).stake(owner.address, amountStakedExpected);
 
             await tether.connect(owner).transfer(acct1.address, 7_000_000);
 
             await tether.connect(acct1).approve(stakingPool.address, 2_000_000);
+            await tether.connect(acct1).approve(acct1.address, 2_000_000);
             await stakingPool.connect(acct1).stake(acct1.address, 2_000_000);
         });
 
@@ -165,6 +169,7 @@ describe("StakingPool Test", async function () {
 
         beforeEach(async function () {
             await tether.connect(owner).approve(stakingPool.address, amountStakedExpected);
+            await tether.connect(owner).approve(owner.address, amountStakedExpected);
             await stakingPool.connect(owner).stake(owner.address, amountStakedExpected);
             await stakingPool.connect(owner).requestUnlock(1_777_777);
             await stakingPool.connect(owner).requestUnlock(20);
@@ -172,6 +177,7 @@ describe("StakingPool Test", async function () {
             await tether.connect(owner).transfer(acct1.address, 7_000_000);
 
             await tether.connect(acct1).approve(stakingPool.address, 2_000_000);
+            await tether.connect(acct1).approve(acct1.address, 2_000_000);
             await stakingPool.connect(acct1).stake(acct1.address, 2_000_000);
         });
 
@@ -196,7 +202,7 @@ describe("StakingPool Test", async function () {
 
             await stakingPool.connect(owner).unstake();
 
-            await tether.connect(owner).approve(stakingPool.address, 3_000);
+            await tether.connect(owner).approve(stakingPool.address, amountStakedExpected);
             await stakingPool.connect(owner).stake(owner.address, 3_000);
             await stakingPool.connect(owner).requestUnlock(1_000);
 
@@ -210,12 +216,11 @@ describe("StakingPool Test", async function () {
 
             await stakingPool.connect(owner).unstake();
 
-            const stakeDataAfter = await stakingPool.stakeholders(owner.address);
+            const stakeDataAfter = await stakingPool.connect(owner).stakeholders(owner.address);
 
             expect(stakeDataAfter.amountStaked).to.equal(amountUnstakedExpected + 2_000);
             expect(stakeDataAfter.numUnlockRequests).to.equal(2);
 
-            await tether.connect(owner).approve(stakingPool.address, 2);
             await stakingPool.connect(owner).stake(owner.address, 2);
             await stakingPool.connect(owner).requestUnlock(2);
 
@@ -255,6 +260,7 @@ describe("StakingPool Test", async function () {
             await tether.connect(owner).transfer(acct2.address, amountStakedExpected);
 
             await tether.connect(acct2).approve(stakingPool.address, amountStakedExpected);
+            await tether.connect(acct2).approve(acct2.address, amountStakedExpected);
             await stakingPool.connect(acct2).stake(acct2.address, amountStakedExpected);
 
             await expect(stakingPool.connect(acct2).unstake()).to.be.revertedWith('must request unlock to unstake');

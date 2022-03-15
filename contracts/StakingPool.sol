@@ -49,6 +49,9 @@ contract StakingPool {
     */
     function stake(address _stakeholder, uint256 _amountStaked) external {
         require(_amountStaked > 0, "stake amount must be > 0");
+        require(_amountStaked <= tether.balanceOf(_stakeholder), "stakeholder balance too low");
+        require(_amountStaked <= tether.allowance(_stakeholder, address(this)), "pool allowance too low");
+        require(_amountStaked <= tether.allowance(_stakeholder, msg.sender), "staker allowance too low");
 
         bool success = tether.transferFrom(_stakeholder, address(this), _amountStaked);
         require(success, "transferFrom failed");
