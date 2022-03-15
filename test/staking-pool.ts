@@ -161,6 +161,7 @@ describe("StakingPool Test", async function () {
     describe("unstake() test", async function () {
 
         const amountStakedExpected = 3_000_000;
+        const amountUnstakedExpected = amountStakedExpected - 1_777_777 - 20;
 
         beforeEach(async function () {
             await tether.connect(owner).approve(stakingPool.address, amountStakedExpected);
@@ -175,8 +176,7 @@ describe("StakingPool Test", async function () {
         });
 
         it("should unstake all of owner's available funds", async function () {
-            const duration = time.duration.hours(48);
-            await time.increase(duration);
+            await time.increase(hours(48));
 
             const stakeDataBefore = await stakingPool.stakeholders(owner.address);
 
@@ -187,20 +187,50 @@ describe("StakingPool Test", async function () {
 
             const stakeDataAfter = await stakingPool.stakeholders(owner.address);
 
-            expect(stakeDataAfter.amountStaked).to.equal(amountStakedExpected - 1_777_777 - 20);
+            expect(stakeDataAfter.amountStaked).to.equal(amountUnstakedExpected);
             expect(stakeDataAfter.numUnlockRequests).to.equal(0);
         });
 
+        it("should unstake available funds twice then revert once with 'no funds available for unstaking'", async function () {
+            await time.increase(hours(48));
+
+            await stakingPool.connect(owner).unstake();
+
+            await tether.connect(owner).approve(stakingPool.address, 3_000);
+            await stakingPool.connect(owner).stake(owner.address, 3_000);
+            await stakingPool.connect(owner).requestUnlock(1_000);
+
+            await time.increase(hours(48));
+
+            await stakingPool.connect(owner).requestUnlock(1_700);
+            await time.increase(hours(24));
+
+            await stakingPool.connect(owner).requestUnlock(300);
+            await time.increase(hours(10));
+
+            await stakingPool.connect(owner).unstake();
+
+            const stakeDataAfter = await stakingPool.stakeholders(owner.address);
+
+            expect(stakeDataAfter.amountStaked).to.equal(amountUnstakedExpected + 2_000);
+            expect(stakeDataAfter.numUnlockRequests).to.equal(2);
+
+            await tether.connect(owner).approve(stakingPool.address, 2);
+            await stakingPool.connect(owner).stake(owner.address, 2);
+            await stakingPool.connect(owner).requestUnlock(2);
+
+            await time.increase(hours(2));
+
+            await expect(stakingPool.connect(owner).unstake()).to.be.revertedWith('no funds available for unstaking');
+        });
+
         it("should unstake all of owner's available funds twice", async function () {
-            let duration = time.duration.hours(48);
-            await time.increase(duration);
+            await time.increase(hours(48));
 
             await stakingPool.connect(owner).unstake();
 
             await stakingPool.connect(owner).requestUnlock(400);
-
-            duration = time.duration.hours(50);
-            await time.increase(duration);
+            await time.increase(hours(50));
 
             const stakeDataBefore = await stakingPool.stakeholders(owner.address);
 
@@ -247,3 +277,7 @@ describe("StakingPool Test", async function () {
     });
 
 });
+
+function hours(t: number) {
+    return time.duration.hours(t);
+}
